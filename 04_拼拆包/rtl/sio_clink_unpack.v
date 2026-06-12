@@ -39,7 +39,7 @@ typedef struct packed {
 } clink_frame_t;
 `endif
 
-module sio_clink_unpack (
+module SIO_CLINK_UNPACK (
     input  wire         clk_i,
     input  wire         rst_n_i,
 

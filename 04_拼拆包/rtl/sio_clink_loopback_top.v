@@ -17,7 +17,7 @@ typedef struct packed {
 } clink_frame_t;
 `endif
 
-module sio_clink_loopback_top (
+module SIO_CLINK_LOOPBACK_TOP (
     input  wire         clk_i,
     input  wire         rst_n_i,
 
@@ -60,7 +60,7 @@ module sio_clink_loopback_top (
     wire          clink_rsp_vld_w;
     wire          clink_dat_vld_w;
 
-    sio_clink_pack u_pack (
+    SIO_CLINK_PACK U_PACK (
         .clk_i             (clk_i),
         .rst_n_i           (rst_n_i),
 
@@ -83,7 +83,7 @@ module sio_clink_loopback_top (
         .clink_dat_vld_o   (clink_dat_vld_w)
     );
 
-    sio_clink_unpack u_unpack (
+    SIO_CLINK_UNPACK U_UNPACK (
         .clk_i               (clk_i),
         .rst_n_i             (rst_n_i),
 

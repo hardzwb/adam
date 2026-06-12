@@ -60,7 +60,7 @@ typedef struct packed {
 } clink_frame_t;
 `endif
 
-module sio_clink_pack (
+module SIO_CLINK_PACK (
     input  wire         clk_i,
     input  wire         rst_n_i,
 

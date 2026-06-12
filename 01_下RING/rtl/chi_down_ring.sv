@@ -32,7 +32,7 @@
 `define CHI_SNP_FIFO_DEPTH 4
 `endif
 
-module chi_down_ring #(
+module CHI_DOWN_RING #(
     parameter int REQ_W = `CHI_REQ_W,
     parameter int RSP_W = `CHI_RSP_W,
     parameter int DAT_W = `CHI_DAT_W,
@@ -41,31 +41,26 @@ module chi_down_ring #(
     parameter int REQ_FIFO_DEPTH = `CHI_REQ_FIFO_DEPTH,
     parameter int RSP_FIFO_DEPTH = `CHI_RSP_FIFO_DEPTH,
     parameter int DAT_FIFO_DEPTH = `CHI_DAT_FIFO_DEPTH,
-    parameter int SNP_FIFO_DEPTH = `CHI_SNP_FIFO_DEPTH,
-
-    parameter int REQ_CREDIT_W = (REQ_FIFO_DEPTH <= 1) ? 1 : $clog2(REQ_FIFO_DEPTH + 1),
-    parameter int RSP_CREDIT_W = (RSP_FIFO_DEPTH <= 1) ? 1 : $clog2(RSP_FIFO_DEPTH + 1),
-    parameter int DAT_CREDIT_W = (DAT_FIFO_DEPTH <= 1) ? 1 : $clog2(DAT_FIFO_DEPTH + 1),
-    parameter int SNP_CREDIT_W = (SNP_FIFO_DEPTH <= 1) ? 1 : $clog2(SNP_FIFO_DEPTH + 1)
+    parameter int SNP_FIFO_DEPTH = `CHI_SNP_FIFO_DEPTH
 ) (
     input  logic                    clk,
     input  logic                    rst_n,
 
     input  logic                    req_in_vld_i,
     input  logic [REQ_W-1:0]        req_in_i,
-    output logic [REQ_CREDIT_W-1:0] req_in_credit_o,
+    output logic                    req_in_credit_o,
 
     input  logic                    rsp_in_vld_i,
     input  logic [RSP_W-1:0]        rsp_in_i,
-    output logic [RSP_CREDIT_W-1:0] rsp_in_credit_o,
+    output logic                    rsp_in_credit_o,
 
     input  logic                    dat_in_vld_i,
     input  logic [DAT_W-1:0]        dat_in_i,
-    output logic [DAT_CREDIT_W-1:0] dat_in_credit_o,
+    output logic                    dat_in_credit_o,
 
     input  logic                    snp_in_vld_i,
     input  logic [SNP_W-1:0]        snp_in_i,
-    output logic [SNP_CREDIT_W-1:0] snp_in_credit_o,
+    output logic                    snp_in_credit_o,
 
     output logic                    req_out_vld_o,
     output logic [REQ_W-1:0]        req_out_o,
@@ -89,10 +84,11 @@ module chi_down_ring #(
     output logic                    snp_overflow_o
 );
 
-    chi_credit_fifo #(
+    // Request channel
+    CHI_CREDIT_FIFO #(
         .DATA_W(REQ_W),
         .DEPTH (REQ_FIFO_DEPTH)
-    ) u_req_fifo (
+    ) U_REQ_FIFO (
         .clk        (clk),
         .rst_n      (rst_n),
         .in_vld_i   (req_in_vld_i),
@@ -104,10 +100,11 @@ module chi_down_ring #(
         .out_rdy_i  (req_out_rdy_i)
     );
 
-    chi_credit_fifo #(
+    // Response channel
+    CHI_CREDIT_FIFO #(
         .DATA_W(RSP_W),
         .DEPTH (RSP_FIFO_DEPTH)
-    ) u_rsp_fifo (
+    ) U_RSP_FIFO (
         .clk        (clk),
         .rst_n      (rst_n),
         .in_vld_i   (rsp_in_vld_i),
@@ -119,10 +116,11 @@ module chi_down_ring #(
         .out_rdy_i  (rsp_out_rdy_i)
     );
 
-    chi_credit_fifo #(
+    // Data channel
+    CHI_CREDIT_FIFO #(
         .DATA_W(DAT_W),
         .DEPTH (DAT_FIFO_DEPTH)
-    ) u_dat_fifo (
+    ) U_DAT_FIFO (
         .clk        (clk),
         .rst_n      (rst_n),
         .in_vld_i   (dat_in_vld_i),
@@ -134,10 +132,11 @@ module chi_down_ring #(
         .out_rdy_i  (dat_out_rdy_i)
     );
 
-    chi_credit_fifo #(
+    // Snoop channel
+    CHI_CREDIT_FIFO #(
         .DATA_W(SNP_W),
         .DEPTH (SNP_FIFO_DEPTH)
-    ) u_snp_fifo (
+    ) U_SNP_FIFO (
         .clk        (clk),
         .rst_n      (rst_n),
         .in_vld_i   (snp_in_vld_i),

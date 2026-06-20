@@ -1,2 +1,2 @@
-rtl/chi_credit_fifo.sv
-rtl/chi_down_ring.sv
+rtl/sllc_tx_fifo.v
+rtl/sllc_tx_buffer.v

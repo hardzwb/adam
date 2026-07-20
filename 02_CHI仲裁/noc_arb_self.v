@@ -1,3 +1,4 @@
+// Per-channel NOC-side CHI port bundle.  IDX is the NOC port suffix, 0 or 1.
 `define CHI_NOC_PORTS(CH, IDX) \
    ,output wire tx``CH``flitpend``IDX \
    ,output wire tx``CH``flitv``IDX \
@@ -15,6 +16,7 @@
    ,input  wire rx``CH``retlcrdv``IDX \
    ,input  wire rx``CH``hint``IDX
 
+// Per-channel SLLC-side CHI port bundle.  SLLC ports keep the original names.
 `define CHI_SLLC_PORTS(CH) \
    ,input  wire tx``CH``flitpend \
    ,input  wire tx``CH``flitv \
@@ -32,6 +34,8 @@
    ,output wire rx``CH``retlcrdv \
    ,output wire rx``CH``hint
 
+// Instantiate one complete channel datapath.  All six CHI channels share the
+// same buffering, credit isolation, and round-robin arbitration structure.
 `define CHI_CHANNEL_INSTANCE(CH) \
 SKY_CHI_CHANNEL_ARB u_``CH``_channel ( \
     .clk                (clk                   ), \
@@ -153,6 +157,8 @@ module NOC_ARB #(
    `CHI_SLLC_PORTS(rspext)
 );
 
+// The link-control wrapper is shared by all traffic channels on the same CHI
+// port.  Each channel datapath consumes these controls when driving RXBUF/TXBUF.
 wire rxlcrdhold0;
 wire txlcrdreturn0;
 wire txlcrdreceive0;
@@ -166,7 +172,8 @@ wire txlcrdreturn_sllc;
 wire txlcrdreceive_sllc;
 wire txflitenable_sllc;
 
-// Link control for the three CHI-facing ports.
+// Link control for the three CHI-facing ports.  The SLLC instance is wired with
+// the port direction reversed because it faces the downstream CHI endpoint.
 SKY_LINK_CTRL_ACTIVE u_link_ctrl_noc0 (
     .clk             (clk                 ),
     .rst_n           (rst_n               ),
@@ -318,6 +325,8 @@ module SKY_CHI_CHANNEL_ARB (
    ,output wire rx_hint
 );
 
+// RXBUF outputs are the arbitration sources.  TXBUF ready signals are the
+// arbitration sinks and also gate RXBUF pop/credit-return timing.
 wire        rxbuf_vld0;
 wire [2:0]  rxbuf_pld0;
 wire        rxbuf_rdy0;
@@ -359,11 +368,15 @@ wire        rx_nocinfo_unused;
 reg         to_sllc_arb_sel;
 reg         from_sllc_arb_sel;
 
+// RX direction has no nocinfo on the upstream input, so the local packed flit
+// inserts a zero in the middle bit: {patag, nocinfo, flit}.
 assign rx_flit_pack0 = {rx_flitpatag0, 1'b0, rx_flit0};
 assign rx_flit_pack1 = {rx_flitpatag1, 1'b0, rx_flit1};
 assign {rx_flitpatag, rx_nocinfo_unused, rx_flit} = rx_flit_pack;
 assign rx_hint = 1'b0;
 
+// TX direction carries nocinfo from SLLC to each NOC port.  The TXBUF flit bus
+// transports {patag, nocinfo, flit} as one compact payload.
 assign tx_flit_pack = {tx_flitpatag, tx_nocinfo, tx_flit};
 assign {tx_flitpatag0, tx_nocinfo0, tx_flit0} = tx_flit_pack0;
 assign {tx_flitpatag1, tx_nocinfo1, tx_flit1} = tx_flit_pack1;
@@ -402,6 +415,8 @@ SKY_RXBUF u_rxbuf_noc1 (
 );
 
 // tx begin: fair arbitration from two NOC RX buffers into the SLLC TX buffer.
+// RXBUF pop happens only when the selected entry can enter the downstream
+// TXBUF, so credit returns to exactly one upstream port.
 assign to_sllc_sel0          = rxbuf_vld0 & (~rxbuf_vld1 | ~to_sllc_arb_sel);
 assign to_sllc_sel1          = rxbuf_vld1 & (~rxbuf_vld0 |  to_sllc_arb_sel);
 assign to_sllc_fire          = txbuf_rdy_sllc & (to_sllc_sel0 | to_sllc_sel1);
@@ -458,6 +473,8 @@ SKY_RXBUF u_rxbuf_sllc (
 );
 
 // rx begin: fair distribution from the SLLC RX buffer into two NOC TX buffers.
+// If only one NOC TXBUF is ready, send to that side.  If both are ready, toggle
+// priority after each accepted flit to avoid long-term bias.
 assign from_sllc_sel0        = rxbuf_vld_sllc & txbuf_rdy0 &
                                (~txbuf_rdy1 | ~from_sllc_arb_sel);
 assign from_sllc_sel1        = rxbuf_vld_sllc & txbuf_rdy1 &

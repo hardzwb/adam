@@ -16,6 +16,7 @@
 建议建立一个轻量 SystemVerilog testbench：
 
 - DUT：`NOC_ARB`。
+- Interface：例化三组 `CHI_NOC_ARB_IF`，分别连接到 DUT 的 `noc0`、`noc1`、`sllc`。
 - Stub/模型：为 `SKY_LINK_CTRL_ACTIVE`、`SKY_RXBUF`、`SKY_TXBUF` 提供可观测模型。
 - Driver：分别驱动 `noc0`、`noc1`、`sllc` 三组 CHI 端口。
 - Monitor：采集每个通道的输入、输出、credit 和 ready。
@@ -130,5 +131,4 @@
 - Credit 检查无误返回。
 - 打包/解包检查无 mismatch。
 - 基础功能覆盖和关键分支覆盖达到计划要求。
-- RTL 语法检查通过；若使用的工具不支持宏或当前封装 stub，需要在验证报告中记录限制。
-
+- SystemVerilog 语法检查通过；若使用的工具不支持 interface、modport、宏或当前封装 stub，需要在验证报告中记录限制。

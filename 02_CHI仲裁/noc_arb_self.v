@@ -1,38 +1,103 @@
-// Per-channel NOC-side CHI port bundle.  IDX is the NOC port suffix, 0 or 1.
-`define CHI_NOC_PORTS(CH, IDX) \
-   ,output wire tx``CH``flitpend``IDX \
-   ,output wire tx``CH``flitv``IDX \
-   ,output wire tx``CH``flit``IDX \
-   ,output wire tx``CH``flitpatag``IDX \
-   ,input  wire tx``CH``lcrdv``IDX \
-   ,output wire tx``CH``retlcrdv``IDX \
-   ,output wire tx``CH``nocinfo``IDX \
-   ,output wire tx``CH``push``IDX \
-   ,input  wire rx``CH``flitpend``IDX \
-   ,input  wire rx``CH``flitv``IDX \
-   ,input  wire rx``CH``flit``IDX \
-   ,input  wire rx``CH``flitpatag``IDX \
-   ,output wire rx``CH``lcrdv``IDX \
-   ,input  wire rx``CH``retlcrdv``IDX \
-   ,input  wire rx``CH``hint``IDX
+// One CHI traffic channel inside a port interface.
+`define CHI_CHANNEL_SIGNALS(CH) \
+logic tx``CH``flitpend; \
+logic tx``CH``flitv; \
+logic tx``CH``flit; \
+logic tx``CH``flitpatag; \
+logic tx``CH``lcrdv; \
+logic tx``CH``retlcrdv; \
+logic tx``CH``nocinfo; \
+logic tx``CH``push; \
+logic rx``CH``flitpend; \
+logic rx``CH``flitv; \
+logic rx``CH``flit; \
+logic rx``CH``flitpatag; \
+logic rx``CH``lcrdv; \
+logic rx``CH``retlcrdv; \
+logic rx``CH``hint;
 
-// Per-channel SLLC-side CHI port bundle.  SLLC ports keep the original names.
-`define CHI_SLLC_PORTS(CH) \
-   ,input  wire tx``CH``flitpend \
-   ,input  wire tx``CH``flitv \
-   ,input  wire tx``CH``flit \
-   ,input  wire tx``CH``flitpatag \
-   ,output wire tx``CH``lcrdv \
-   ,input  wire tx``CH``retlcrdv \
-   ,input  wire tx``CH``nocinfo \
-   ,input  wire tx``CH``push \
-   ,output wire rx``CH``flitpend \
-   ,output wire rx``CH``flitv \
-   ,output wire rx``CH``flit \
-   ,output wire rx``CH``flitpatag \
-   ,input  wire rx``CH``lcrdv \
-   ,output wire rx``CH``retlcrdv \
-   ,output wire rx``CH``hint
+// NOC-facing modport directions are from NOC_ARB's point of view.
+`define CHI_NOC_MODPORT(CH) \
+   ,output tx``CH``flitpend \
+   ,output tx``CH``flitv \
+   ,output tx``CH``flit \
+   ,output tx``CH``flitpatag \
+   ,input  tx``CH``lcrdv \
+   ,output tx``CH``retlcrdv \
+   ,output tx``CH``nocinfo \
+   ,output tx``CH``push \
+   ,input  rx``CH``flitpend \
+   ,input  rx``CH``flitv \
+   ,input  rx``CH``flit \
+   ,input  rx``CH``flitpatag \
+   ,output rx``CH``lcrdv \
+   ,input  rx``CH``retlcrdv \
+   ,input  rx``CH``hint
+
+// SLLC-facing modport directions are from NOC_ARB's point of view.
+`define CHI_SLLC_MODPORT(CH) \
+   ,input  tx``CH``flitpend \
+   ,input  tx``CH``flitv \
+   ,input  tx``CH``flit \
+   ,input  tx``CH``flitpatag \
+   ,output tx``CH``lcrdv \
+   ,input  tx``CH``retlcrdv \
+   ,input  tx``CH``nocinfo \
+   ,input  tx``CH``push \
+   ,output rx``CH``flitpend \
+   ,output rx``CH``flitv \
+   ,output rx``CH``flit \
+   ,output rx``CH``flitpatag \
+   ,input  rx``CH``lcrdv \
+   ,output rx``CH``retlcrdv \
+   ,output rx``CH``hint
+
+interface CHI_NOC_ARB_IF;
+logic txsactive;
+logic rxsactive;
+logic txlinkactivereq;
+logic txlinkactiveack;
+logic rxlinkactivereq;
+logic rxlinkactiveack;
+
+`CHI_CHANNEL_SIGNALS(req)
+`CHI_CHANNEL_SIGNALS(dat)
+`CHI_CHANNEL_SIGNALS(rsp)
+`CHI_CHANNEL_SIGNALS(reqext)
+`CHI_CHANNEL_SIGNALS(datext)
+`CHI_CHANNEL_SIGNALS(rspext)
+
+modport noc_side (
+    output txsactive
+   ,input  rxsactive
+   ,output txlinkactivereq
+   ,input  txlinkactiveack
+   ,input  rxlinkactivereq
+   ,output rxlinkactiveack
+   `CHI_NOC_MODPORT(req)
+   `CHI_NOC_MODPORT(dat)
+   `CHI_NOC_MODPORT(rsp)
+   `CHI_NOC_MODPORT(reqext)
+   `CHI_NOC_MODPORT(datext)
+   `CHI_NOC_MODPORT(rspext)
+);
+
+modport sllc_side (
+    input  txsactive
+   ,output rxsactive
+   ,input  txlinkactivereq
+   ,output txlinkactiveack
+   ,output rxlinkactivereq
+   ,input  rxlinkactiveack
+   `CHI_SLLC_MODPORT(req)
+   `CHI_SLLC_MODPORT(dat)
+   `CHI_SLLC_MODPORT(rsp)
+   `CHI_SLLC_MODPORT(reqext)
+   `CHI_SLLC_MODPORT(datext)
+   `CHI_SLLC_MODPORT(rspext)
+);
+
+endinterface
 
 // Instantiate one complete channel datapath.  All six CHI channels share the
 // same buffering, credit isolation, and round-robin arbitration structure.
@@ -52,51 +117,51 @@ SKY_CHI_CHANNEL_ARB u_``CH``_channel ( \
     .txlcrdreturn_sllc  (txlcrdreturn_sllc     ), \
     .txlcrdreceive_sllc (txlcrdreceive_sllc    ), \
     .txflitenable_sllc  (txflitenable_sllc     ), \
-    .tx_flitpend0       (tx``CH``flitpend0     ), \
-    .tx_flitv0          (tx``CH``flitv0        ), \
-    .tx_flit0           (tx``CH``flit0         ), \
-    .tx_flitpatag0      (tx``CH``flitpatag0    ), \
-    .tx_lcrdv0          (tx``CH``lcrdv0        ), \
-    .tx_retlcrdv0       (tx``CH``retlcrdv0     ), \
-    .tx_nocinfo0        (tx``CH``nocinfo0      ), \
-    .tx_push0           (tx``CH``push0         ), \
-    .rx_flitpend0       (rx``CH``flitpend0     ), \
-    .rx_flitv0          (rx``CH``flitv0        ), \
-    .rx_flit0           (rx``CH``flit0         ), \
-    .rx_flitpatag0      (rx``CH``flitpatag0    ), \
-    .rx_lcrdv0          (rx``CH``lcrdv0        ), \
-    .rx_retlcrdv0       (rx``CH``retlcrdv0     ), \
-    .rx_hint0           (rx``CH``hint0         ), \
-    .tx_flitpend1       (tx``CH``flitpend1     ), \
-    .tx_flitv1          (tx``CH``flitv1        ), \
-    .tx_flit1           (tx``CH``flit1         ), \
-    .tx_flitpatag1      (tx``CH``flitpatag1    ), \
-    .tx_lcrdv1          (tx``CH``lcrdv1        ), \
-    .tx_retlcrdv1       (tx``CH``retlcrdv1     ), \
-    .tx_nocinfo1        (tx``CH``nocinfo1      ), \
-    .tx_push1           (tx``CH``push1         ), \
-    .rx_flitpend1       (rx``CH``flitpend1     ), \
-    .rx_flitv1          (rx``CH``flitv1        ), \
-    .rx_flit1           (rx``CH``flit1         ), \
-    .rx_flitpatag1      (rx``CH``flitpatag1    ), \
-    .rx_lcrdv1          (rx``CH``lcrdv1        ), \
-    .rx_retlcrdv1       (rx``CH``retlcrdv1     ), \
-    .rx_hint1           (rx``CH``hint1         ), \
-    .tx_flitpend        (tx``CH``flitpend      ), \
-    .tx_flitv           (tx``CH``flitv         ), \
-    .tx_flit            (tx``CH``flit          ), \
-    .tx_flitpatag       (tx``CH``flitpatag     ), \
-    .tx_lcrdv           (tx``CH``lcrdv         ), \
-    .tx_retlcrdv        (tx``CH``retlcrdv      ), \
-    .tx_nocinfo         (tx``CH``nocinfo       ), \
-    .tx_push            (tx``CH``push          ), \
-    .rx_flitpend        (rx``CH``flitpend      ), \
-    .rx_flitv           (rx``CH``flitv         ), \
-    .rx_flit            (rx``CH``flit          ), \
-    .rx_flitpatag       (rx``CH``flitpatag     ), \
-    .rx_lcrdv           (rx``CH``lcrdv         ), \
-    .rx_retlcrdv        (rx``CH``retlcrdv      ), \
-    .rx_hint            (rx``CH``hint          )  \
+    .tx_flitpend0       (noc0.tx``CH``flitpend ), \
+    .tx_flitv0          (noc0.tx``CH``flitv    ), \
+    .tx_flit0           (noc0.tx``CH``flit     ), \
+    .tx_flitpatag0      (noc0.tx``CH``flitpatag), \
+    .tx_lcrdv0          (noc0.tx``CH``lcrdv    ), \
+    .tx_retlcrdv0       (noc0.tx``CH``retlcrdv ), \
+    .tx_nocinfo0        (noc0.tx``CH``nocinfo  ), \
+    .tx_push0           (noc0.tx``CH``push     ), \
+    .rx_flitpend0       (noc0.rx``CH``flitpend ), \
+    .rx_flitv0          (noc0.rx``CH``flitv    ), \
+    .rx_flit0           (noc0.rx``CH``flit     ), \
+    .rx_flitpatag0      (noc0.rx``CH``flitpatag), \
+    .rx_lcrdv0          (noc0.rx``CH``lcrdv    ), \
+    .rx_retlcrdv0       (noc0.rx``CH``retlcrdv ), \
+    .rx_hint0           (noc0.rx``CH``hint     ), \
+    .tx_flitpend1       (noc1.tx``CH``flitpend ), \
+    .tx_flitv1          (noc1.tx``CH``flitv    ), \
+    .tx_flit1           (noc1.tx``CH``flit     ), \
+    .tx_flitpatag1      (noc1.tx``CH``flitpatag), \
+    .tx_lcrdv1          (noc1.tx``CH``lcrdv    ), \
+    .tx_retlcrdv1       (noc1.tx``CH``retlcrdv ), \
+    .tx_nocinfo1        (noc1.tx``CH``nocinfo  ), \
+    .tx_push1           (noc1.tx``CH``push     ), \
+    .rx_flitpend1       (noc1.rx``CH``flitpend ), \
+    .rx_flitv1          (noc1.rx``CH``flitv    ), \
+    .rx_flit1           (noc1.rx``CH``flit     ), \
+    .rx_flitpatag1      (noc1.rx``CH``flitpatag), \
+    .rx_lcrdv1          (noc1.rx``CH``lcrdv    ), \
+    .rx_retlcrdv1       (noc1.rx``CH``retlcrdv ), \
+    .rx_hint1           (noc1.rx``CH``hint     ), \
+    .tx_flitpend        (sllc.tx``CH``flitpend ), \
+    .tx_flitv           (sllc.tx``CH``flitv    ), \
+    .tx_flit            (sllc.tx``CH``flit     ), \
+    .tx_flitpatag       (sllc.tx``CH``flitpatag), \
+    .tx_lcrdv           (sllc.tx``CH``lcrdv    ), \
+    .tx_retlcrdv        (sllc.tx``CH``retlcrdv ), \
+    .tx_nocinfo         (sllc.tx``CH``nocinfo  ), \
+    .tx_push            (sllc.tx``CH``push     ), \
+    .rx_flitpend        (sllc.rx``CH``flitpend ), \
+    .rx_flitv           (sllc.rx``CH``flitv    ), \
+    .rx_flit            (sllc.rx``CH``flit     ), \
+    .rx_flitpatag       (sllc.rx``CH``flitpatag), \
+    .rx_lcrdv           (sllc.rx``CH``lcrdv    ), \
+    .rx_retlcrdv        (sllc.rx``CH``retlcrdv ), \
+    .rx_hint            (sllc.rx``CH``hint     )  \
 );
 
 module NOC_ARB #(
@@ -104,57 +169,9 @@ module NOC_ARB #(
 ) (
     input wire clk
    ,input wire rst_n
-
-    //--------------------------------------------------------------------------
-    // NOC0 port
-    //--------------------------------------------------------------------------
-   ,output wire txsactive0
-   ,input  wire rxsactive0
-   ,output wire txlinkactivereq0
-   ,input  wire txlinkactiveack0
-   ,input  wire rxlinkactivereq0
-   ,output wire rxlinkactiveack0
-
-   `CHI_NOC_PORTS(req,    0)
-   `CHI_NOC_PORTS(dat,    0)
-   `CHI_NOC_PORTS(rsp,    0)
-   `CHI_NOC_PORTS(reqext, 0)
-   `CHI_NOC_PORTS(datext, 0)
-   `CHI_NOC_PORTS(rspext, 0)
-
-    //--------------------------------------------------------------------------
-    // NOC1 port
-    //--------------------------------------------------------------------------
-   ,output wire txsactive1
-   ,input  wire rxsactive1
-   ,output wire txlinkactivereq1
-   ,input  wire txlinkactiveack1
-   ,input  wire rxlinkactivereq1
-   ,output wire rxlinkactiveack1
-
-   `CHI_NOC_PORTS(req,    1)
-   `CHI_NOC_PORTS(dat,    1)
-   `CHI_NOC_PORTS(rsp,    1)
-   `CHI_NOC_PORTS(reqext, 1)
-   `CHI_NOC_PORTS(datext, 1)
-   `CHI_NOC_PORTS(rspext, 1)
-
-    //--------------------------------------------------------------------------
-    // SLLC port
-    //--------------------------------------------------------------------------
-   ,input  wire txsactive
-   ,output wire rxsactive
-   ,input  wire txlinkactivereq
-   ,output wire txlinkactiveack
-   ,output wire rxlinkactivereq
-   ,input  wire rxlinkactiveack
-
-   `CHI_SLLC_PORTS(req)
-   `CHI_SLLC_PORTS(dat)
-   `CHI_SLLC_PORTS(rsp)
-   `CHI_SLLC_PORTS(reqext)
-   `CHI_SLLC_PORTS(datext)
-   `CHI_SLLC_PORTS(rspext)
+   ,CHI_NOC_ARB_IF.noc_side  noc0
+   ,CHI_NOC_ARB_IF.noc_side  noc1
+   ,CHI_NOC_ARB_IF.sllc_side sllc
 );
 
 // The link-control wrapper is shared by all traffic channels on the same CHI
@@ -177,12 +194,12 @@ wire txflitenable_sllc;
 SKY_LINK_CTRL_ACTIVE u_link_ctrl_noc0 (
     .clk             (clk                 ),
     .rst_n           (rst_n               ),
-    .txsactive       (txsactive0          ),
-    .rxsactive       (rxsactive0          ),
-    .txlinkactivereq (txlinkactivereq0    ),
-    .rxlinkactivereq (rxlinkactivereq0    ),
-    .rxlinkactiveack (rxlinkactiveack0    ),
-    .txlinkactiveack (txlinkactiveack0    ),
+    .txsactive       (noc0.txsactive      ),
+    .rxsactive       (noc0.rxsactive      ),
+    .txlinkactivereq (noc0.txlinkactivereq),
+    .rxlinkactivereq (noc0.rxlinkactivereq),
+    .rxlinkactiveack (noc0.rxlinkactiveack),
+    .txlinkactiveack (noc0.txlinkactiveack),
     .rxlcrdhold      (rxlcrdhold0         ),
     .txlcrdreturn    (txlcrdreturn0       ),
     .txlcrdreceive   (txlcrdreceive0      ),
@@ -192,12 +209,12 @@ SKY_LINK_CTRL_ACTIVE u_link_ctrl_noc0 (
 SKY_LINK_CTRL_ACTIVE u_link_ctrl_noc1 (
     .clk             (clk                 ),
     .rst_n           (rst_n               ),
-    .txsactive       (txsactive1          ),
-    .rxsactive       (rxsactive1          ),
-    .txlinkactivereq (txlinkactivereq1    ),
-    .rxlinkactivereq (rxlinkactivereq1    ),
-    .rxlinkactiveack (rxlinkactiveack1    ),
-    .txlinkactiveack (txlinkactiveack1    ),
+    .txsactive       (noc1.txsactive      ),
+    .rxsactive       (noc1.rxsactive      ),
+    .txlinkactivereq (noc1.txlinkactivereq),
+    .rxlinkactivereq (noc1.rxlinkactivereq),
+    .rxlinkactiveack (noc1.rxlinkactiveack),
+    .txlinkactiveack (noc1.txlinkactiveack),
     .rxlcrdhold      (rxlcrdhold1         ),
     .txlcrdreturn    (txlcrdreturn1       ),
     .txlcrdreceive   (txlcrdreceive1      ),
@@ -207,12 +224,12 @@ SKY_LINK_CTRL_ACTIVE u_link_ctrl_noc1 (
 SKY_LINK_CTRL_ACTIVE u_link_ctrl_sllc (
     .clk             (clk                 ),
     .rst_n           (rst_n               ),
-    .txsactive       (rxsactive           ),
-    .rxsactive       (txsactive           ),
-    .txlinkactivereq (rxlinkactivereq     ),
-    .rxlinkactivereq (txlinkactivereq     ),
-    .rxlinkactiveack (txlinkactiveack     ),
-    .txlinkactiveack (rxlinkactiveack     ),
+    .txsactive       (sllc.rxsactive      ),
+    .rxsactive       (sllc.txsactive      ),
+    .txlinkactivereq (sllc.rxlinkactivereq),
+    .rxlinkactivereq (sllc.txlinkactivereq),
+    .rxlinkactiveack (sllc.txlinkactiveack),
+    .txlinkactiveack (sllc.rxlinkactiveack),
     .rxlcrdhold      (rxlcrdhold_sllc     ),
     .txlcrdreturn    (txlcrdreturn_sllc   ),
     .txlcrdreceive   (txlcrdreceive_sllc  ),
@@ -251,8 +268,9 @@ SKY_LINK_CTRL_ACTIVE u_link_ctrl_sllc (
 
 endmodule
 
-`undef CHI_NOC_PORTS
-`undef CHI_SLLC_PORTS
+`undef CHI_CHANNEL_SIGNALS
+`undef CHI_NOC_MODPORT
+`undef CHI_SLLC_MODPORT
 `undef CHI_CHANNEL_INSTANCE
 
 module SKY_CHI_CHANNEL_ARB (
